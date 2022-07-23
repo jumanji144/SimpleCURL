@@ -9,6 +9,7 @@ This project is a very simple 1 header solution to make easy http requests via c
 - Usage of modern C++ features
 
 ### Usage
+Requires c++17 standard and above
 An example can be seen in the [example.cpp](example.cpp) file.
 ```cpp
 #include "curl_request.hpp"
