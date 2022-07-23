@@ -11,7 +11,7 @@
 typedef std::map<std::string, std::string> headers_t;
 typedef headers_t cookies_t;
 
-static size_t writeFunction(void* ptr, size_t size, size_t nmemb, std::string* data)
+static size_t _m_writeFunction(void* ptr, size_t size, size_t nmemb, std::string* data)
 {
     data->append((char*)ptr, size * nmemb);
     return size * nmemb;
@@ -214,7 +214,7 @@ private:
     {
         Response response{};
         std::string headers;
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeFunction);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, _m_writeFunction);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response.data);
         curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headers);
 
