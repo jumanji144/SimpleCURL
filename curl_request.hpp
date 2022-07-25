@@ -209,6 +209,8 @@ private:
         curl_headers = curl_slist_append(curl_headers, cookie_header.c_str());
 
         this->curl_headers = curl_headers; // save for later cleanup
+        // set headers
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, curl_headers);
     }
     Response execute()
     {
