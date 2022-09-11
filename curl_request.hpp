@@ -14,18 +14,20 @@ typedef headers_t cookies_t;
 
 static size_t _m_writeFunction(void* ptr, size_t size, size_t nmemb, std::vector<uint8_t>* userdata)
 {
-    uint8_t* data = (uint8_t*) ptr;
+    uint8_t* data = (uint8_t*)ptr;
     for (size_t i = 0; i < nmemb; i++)
     {
         userdata->push_back(data[i]);
     }
-    
+
     return size * nmemb;
 }
 
 struct Response
 {
-    CURLcode code;
+    CURLcode curlCode;
+    int code;
+    std::string message;
     std::string data;
     std::vector<uint8_t> rawData;
     std::vector<uint8_t> rawHeaders;
@@ -227,7 +229,7 @@ private:
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseData);
         curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headerData);
 
-        CURLcode code = curl_easy_perform(curl);
+        CURLcode curlCode = curl_easy_perform(curl);
 
         // read into response data
         response.rawData = responseData;
@@ -237,20 +239,36 @@ private:
         uint8_t* rawHeaders = headerData.data();
         std::string headers = std::string(rawHeaders, rawHeaders + headerData.size());
 
-        // parse header string to vector of headers
+        // get first line
         std::stringstream ss(headers);
         std::string line;
+        std::getline(ss, line);
+
+        int index = line.find(' ');
+        std::string responsePart = line.substr(index + 1);
+
+        index = responsePart.find(' ');
+        std::string message = responsePart.substr(index + 1);
+        std::string codeStr = responsePart.substr(0, index);
+
+        int code = std::stoi(codeStr);
+
+        response.code = code;
+        response.message = message;
+
+        // parse header string to vector of headers
+        ss = std::stringstream(headers);
         while (std::getline(ss, line))
         {
             std::string key;
             std::string value;
             std::stringstream lineStream(line);
             std::getline(lineStream, key, ':');
-			// consume 1 space
-			std::getline(lineStream, value, ' ');
-			// get actual value
-			std::getline(lineStream, value, '\r');
-           
+            // consume 1 space
+            std::getline(lineStream, value, ' ');
+            // get actual value
+            std::getline(lineStream, value, '\r');
+
             response.headers[key] = value;
         }
 
@@ -271,7 +289,7 @@ private:
             }
         }
 
-        response.code = code;
+        response.curlCode = curlCode;
         return response;
     }
 
