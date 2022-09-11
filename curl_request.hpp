@@ -2,6 +2,7 @@
 #include <string>
 #include <map>
 #include <sstream>
+#include <vector>
 #ifdef MANUAL_CURL_PATH // manually linking
 #include MANUAL_CURL_PATH
 #else
@@ -11,9 +12,14 @@
 typedef std::map<std::string, std::string> headers_t;
 typedef headers_t cookies_t;
 
-static size_t _m_writeFunction(void* ptr, size_t size, size_t nmemb, std::string* data)
+static size_t _m_writeFunction(void* ptr, size_t size, size_t nmemb, std::vector<uint8_t>* userdata)
 {
-    data->append((char*)ptr, size * nmemb);
+    uint8_t* data = (uint8_t*) ptr;
+    for (size_t i = 0; i < nmemb; i++)
+    {
+        userdata->push_back(data[i]);
+    }
+    
     return size * nmemb;
 }
 
@@ -21,7 +27,10 @@ struct Response
 {
     CURLcode code;
     std::string data;
+    std::vector<uint8_t> rawData;
+    std::vector<uint8_t> rawHeaders;
     headers_t headers;
+    cookies_t cookies;
 };
 
 class Request
@@ -44,16 +53,13 @@ public:
 
     /**
      * @brief initalize the curl backend, must be called before any other method
+     * @return true when success
      */
     int initalize()
     {
         CURL* localCurl = curl_easy_init();
         this->curl = localCurl;
-        if (!this->curl)
-        {
-            return 1;
-        }
-        return 0;
+        return this->curl != nullptr;
     }
     /**
      * @brief execute the request with the method POST
@@ -172,9 +178,9 @@ public:
 private:
     std::string url;
     std::string data;
-    headers_t headers;
-    cookies_t cookies;
-    curl_slist* curl_headers;
+    headers_t headers{};
+    cookies_t cookies{};
+    curl_slist* curl_headers = nullptr;
 
     void prepare()
     {
@@ -215,12 +221,21 @@ private:
     Response execute()
     {
         Response response{};
-        std::string headers;
+        std::vector<uint8_t> responseData;
+        std::vector<uint8_t> headerData;
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, _m_writeFunction);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response.data);
-        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headers);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseData);
+        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headerData);
 
         CURLcode code = curl_easy_perform(curl);
+
+        // read into response data
+        response.rawData = responseData;
+        uint8_t* rawData = responseData.data();
+        response.data = std::string(rawData, rawData + responseData.size());
+        response.rawHeaders = headerData;
+        uint8_t* rawHeaders = headerData.data();
+        std::string headers = std::string(rawHeaders, rawHeaders + headerData.size());
 
         // parse header string to vector of headers
         std::stringstream ss(headers);
@@ -237,6 +252,23 @@ private:
 			std::getline(lineStream, value, '\r');
            
             response.headers[key] = value;
+        }
+
+        if (response.headers.find("set-cookies") != response.headers.end()) {
+            // parse response cookies
+            std::stringstream ss(response.headers["set-cookies"]);
+            std::string line;
+            while (std::getline(ss, line))
+            {
+                std::string key;
+                std::string value;
+                std::stringstream lineStream(line);
+                std::getline(lineStream, key, '=');
+                // get actual value
+                std::getline(lineStream, value, ';');
+
+                response.cookies[key] = value;
+            }
         }
 
         response.code = code;
