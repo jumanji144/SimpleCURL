@@ -24,6 +24,15 @@ static size_t _m_writeFunction(void* ptr, size_t size, size_t nmemb, std::vector
     return size * nmemb;
 }
 
+static size_t _m_fileWriteFunction(void* ptr, size_t size, size_t nmemb, void* userdata)
+{
+    std::ofstream* ofs = static_cast<std::ofstream*>(userdata);
+    size_t bytes_written = size * nmemb;
+    ofs->write(static_cast<const char*>(ptr), bytes_written);
+    return bytes_written;
+}
+
+
 struct Response
 {
     CURLcode curlCode;
@@ -96,17 +105,18 @@ public:
         return this->execute();
     }
     /**
-     * @brief Download a file from the specified URL and save it to the given file path
-     * @param file_path The path where the downloaded file should be saved
-     * @return The result of the cURL request
-     */
+    * @brief Download a file from the specified URL using a GET request and save it to the given file path
+    * @param file_path The path where the downloaded file should be saved
+    * @return The result of the cURL request
+    */
     int download_file(const std::string& file_path)
     {
         std::ofstream ofs(file_path, std::ios::out | std::ios::binary);
 
         this->prepare();
 
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, file_write_callback);
+        curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, _m_fileWriteFunction);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ofs);
         curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
 
@@ -310,17 +320,8 @@ private:
                 response.cookies[key] = value;
             }
         }
-
         response.curlCode = curlCode;
         return response;
-    }
-    
-    static size_t file_write_callback(void* ptr, size_t size, size_t nmemb, void* userdata)
-    {
-        std::ofstream* ofs = static_cast<std::ofstream*>(userdata);
-        size_t bytes_written = size * nmemb;
-        ofs->write(static_cast<const char*>(ptr), bytes_written);
-        return bytes_written;
     }
 
     CURL* curl;
