@@ -2,6 +2,7 @@
 #include <string>
 #include <map>
 #include <sstream>
+#include <utility>
 #include <vector>
 #include <fstream>
 #ifdef MANUAL_CURL_PATH // manually linking
@@ -15,7 +16,7 @@ typedef headers_t cookies_t;
 
 static size_t _m_writeFunction(void* ptr, size_t size, size_t nmemb, std::vector<uint8_t>* userdata)
 {
-    uint8_t* data = (uint8_t*)ptr;
+    auto* data = (uint8_t*)ptr;
     for (size_t i = 0; i < nmemb; i++)
     {
         userdata->push_back(data[i]);
@@ -26,7 +27,7 @@ static size_t _m_writeFunction(void* ptr, size_t size, size_t nmemb, std::vector
 
 static size_t _m_fileWriteFunction(void* ptr, size_t size, size_t nmemb, void* userdata)
 {
-    std::ofstream* ofs = static_cast<std::ofstream*>(userdata);
+    auto* ofs = static_cast<std::ofstream*>(userdata);
     size_t bytes_written = size * nmemb;
     ofs->write(static_cast<const char*>(ptr), bytes_written);
     return bytes_written;
@@ -58,7 +59,7 @@ class Form {
         */
         void append_string(const std::string& name, const std::string& value) {
             auto part = append(name);
-            curl_mime_data(part, value.c_str(), CURL_ZERO_TERMINATED);
+            curl_mime_data(part, value.c_str(), value.size());
         }
 
         /**
@@ -108,11 +109,11 @@ class Request
 {
 
 public:
-    Request(std::string url) : url(url), data(""), headers() {}
+    explicit Request(std::string url) : url(std::move(url)), headers() {}
 
-    Request(std::string url, std::string data) : url(url), data(data), headers() {}
+    Request(std::string url, std::string data) : url(std::move(url)), data(std::move(data)), headers() {}
 
-    Request(std::string url, std::string data, headers_t headers) : url(url), data(data), headers(headers) {}
+    Request(std::string url, std::string data, headers_t headers) : url(std::move(url)), data(std::move(data)), headers(std::move(headers)) {}
 
     ~Request()
     {
@@ -159,7 +160,7 @@ public:
      * @param method the method to use
      * @return the response of the request
      */
-    Response request(std::string method)
+    Response request(const std::string& method)
     {
         this->prepare();
         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method.c_str());
@@ -199,18 +200,19 @@ public:
      * @param form the form data
      * @return the response of the request
     */
-    Response form(const Form& form) {
+    Response form(Form& form) {
         this->headers["Content-Type"] = "multipart/form-data";
-        curl_easy_setopt(curl, CURLOPT_MIMEPOST, form.form);
-        if(mime) curl_mime_free(mime);
-        mime = form.form;
+        this->prepare();
+        curl_easy_setopt(curl, CURLOPT_MIMEPOST, form.get());
+        if(this->mime) curl_mime_free(mime);
+        this->mime = form.form;
         return this->execute();
     }
     /**
      * @brief set the url of the request
      * @param url the url of the request
      */
-    void set_url(std::string url)
+    void set_url(const std::string& url)
     {
         this->url = url;
     }
@@ -218,7 +220,7 @@ public:
      * @brief set the data of the request
      * @param data the data of the request
      */
-    void set_data(std::string data)
+    void set_data(const std::string& data)
     {
         this->data = data;
     }
@@ -227,7 +229,7 @@ public:
      * @param key the key of the header
      * @param value the value of the header
      */
-    void set_header(std::string key, std::string value)
+    void set_header(const std::string& key, const std::string& value)
     {
         this->headers[key] = value;
     }
@@ -236,7 +238,7 @@ public:
      * @param key the key of the cookie
      * @param value the value of the cookie
      */
-    void set_cookie(std::string key, std::string value)
+    void set_cookie(const std::string& key, const std::string& value)
     {
         this->cookies[key] = value;
     }
@@ -244,7 +246,7 @@ public:
      * @brief remove a header from the request
      * @param key the key of the header
      */
-    void remove_header(std::string key)
+    void remove_header(const std::string& key)
     {
         this->headers.erase(key);
     }
@@ -252,7 +254,7 @@ public:
      * @brief remove a cookie from the request
      * @param key the key of the cookie
      */
-    void remove_cookie(std::string key)
+    void remove_cookie(const std::string& key)
     {
         this->cookies.erase(key);
     }
@@ -313,7 +315,7 @@ private:
         if (curl_headers)
             curl_slist_free_all(curl_headers);
         // redefine headers
-        curl_slist* curl_headers = NULL;
+        curl_slist* curl_headers = nullptr;
         for (auto [key, value] : headers)
         {
             std::string header = key + ": " + value;
@@ -356,7 +358,7 @@ private:
         std::string line;
         std::getline(ss, line);
 
-        int index = line.find(' ');
+        size_t index = line.find(' ');
         std::string responsePart = line.substr(index + 1);
 
         index = responsePart.find(' ');
