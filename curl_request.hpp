@@ -404,6 +404,6 @@ private:
         return response;
     }
 
-    CURL* curl;
-    curl_mime* mime;
+    CURL* curl{nullptr};
+    curl_mime* mime{nullptr};
 };
