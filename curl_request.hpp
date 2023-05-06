@@ -186,6 +186,23 @@ public:
         return result;
     }
     /**
+     * @brief prepare new form data
+     * @return the form data
+    */
+    Form form_data() {
+        return Form(curl);
+    }
+    /**
+     * @brief execute a multipart/form-data request
+     * @param form the form data
+     * @return the response of the request
+    */
+    Response form(const Form& form) {
+        this->headers["Content-Type"] = "multipart/form-data";
+        curl_easy_setopt(curl, CURLOPT_MIMEPOST, form.form);
+        return this->execute();
+    }
+    /**
      * @brief set the url of the request
      * @param url the url of the request
      */
