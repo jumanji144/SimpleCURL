@@ -118,6 +118,8 @@ public:
     {
         if (curl_headers)
             curl_slist_free_all(curl_headers);
+        if (mime)
+            curl_mime_free(mime);
         if (curl)
             curl_easy_cleanup(curl);
     }
@@ -200,6 +202,8 @@ public:
     Response form(const Form& form) {
         this->headers["Content-Type"] = "multipart/form-data";
         curl_easy_setopt(curl, CURLOPT_MIMEPOST, form.form);
+        if(mime) curl_mime_free(mime);
+        mime = form.form;
         return this->execute();
     }
     /**
@@ -401,4 +405,5 @@ private:
     }
 
     CURL* curl;
+    curl_mime* mime;
 };
