@@ -45,6 +45,65 @@ struct Response
     cookies_t cookies;
 };
 
+class Form {
+    public:
+        explicit Form(CURL* curl) {
+            form = curl_mime_init(curl);
+        };
+
+        /**
+         * @brief append a string to the form
+         * @param name the name of the field
+         * @param value the value of the field
+        */
+        void append_string(const std::string& name, const std::string& value) {
+            auto part = append(name);
+            curl_mime_data(part, value.c_str(), CURL_ZERO_TERMINATED);
+        }
+
+        /**
+         * @brief append a file to the form
+         * @param name the name of the field
+         * @param path the path of the file
+        */
+        void append_file(const std::string& name, const std::string& path) {
+            auto part = append(name);
+            curl_mime_filedata(part, path.c_str());
+        }
+
+        /**
+         * @brief append a file to the form
+         * @param name the name of the field
+         * @param path the path of the file
+         * @param filename the filename of the file
+        */
+        void append_file(const std::string& name, const std::string& path, const std::string& filename) {
+            auto part = append(name);
+            curl_mime_filename(part, filename.c_str());
+            curl_mime_filedata(part, path.c_str());
+        }
+
+        /**
+         * @brief append a part to the form
+         * @param name the name of the field
+         * @return the part
+         * @note you can use this to set custom field data
+        */
+        curl_mimepart* append(const std::string& name) {
+            auto part = curl_mime_addpart(form);
+            curl_mime_name(part, name.c_str());
+            return part;
+        }
+
+        curl_mime* get() {
+            return form;
+        }
+    
+    protected:
+        friend class Request;
+        curl_mime* form = nullptr;
+};
+
 class Request
 {
 
