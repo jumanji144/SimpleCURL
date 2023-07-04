@@ -25,3 +25,37 @@ int main() {
         std::cout << key << ": " << value << std::endl;
     }
 }
+
+// websockets
+#include <thread>
+
+int websockets() {
+    // create a request to the websocket server
+    Request req("wss://ws.postman-echo.com/raw");
+
+    WebSocket ws(req);
+
+    // set an on message handler
+    ws.setOnMessage([](auto ws, auto msg){
+        std::cout << "Message: " << msg << std::endl;
+    });
+
+    ws.initialize();
+
+    // connection thread
+    std::thread t([&ws](){
+        ws.connect();
+    });
+
+    while(ws.isConnected()) {
+        // get input
+        std::string input;
+        std::getline(std::cin, input);
+
+        // send input
+        ws.send(input);
+    }
+
+    // wait for connection thread to finish
+    t.join();
+}
