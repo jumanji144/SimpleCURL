@@ -446,7 +446,6 @@ public:
         curl_easy_setopt(m_request.m_curl, CURLOPT_WRITEDATA, this);
         curl_easy_setopt(m_request.m_curl, CURLOPT_CLOSESOCKETFUNCTION, _m_websocket_closeFunction);
         curl_easy_setopt(m_request.m_curl, CURLOPT_CLOSESOCKETDATA, this);
-        curl_easy_setopt(m_request.m_curl, CURLOPT_USERAGENT, "curl/7.88.1");
 
     }
 
