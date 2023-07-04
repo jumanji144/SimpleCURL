@@ -1,1 +1,7 @@
 .vscode/
+.gitmodules
+.idea/
+CMakeLists.txt
+cmake-build-debug/
+lib/
+test.cpp
