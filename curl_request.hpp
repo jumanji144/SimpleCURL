@@ -191,6 +191,14 @@ public:
         return this->execute();
     }
     /**
+     * Set the proxy to use for the request
+     * @param proxy the proxy to use
+     */
+    void set_proxy(const std::string& proxy)
+    {
+        curl_easy_setopt(m_curl, CURLOPT_PROXY, proxy.c_str());
+    }
+    /**
      * @brief set the url of the request
      * @param url the url of the request
      */
